@@ -9,6 +9,8 @@ const Input = React.forwardRef(({
     error,
     required = false,
     id,
+    multiline = false,
+    rows = 3,
     ...props
 }, ref) => {
     // Generate unique ID if not provided
@@ -65,17 +67,32 @@ const Input = React.forwardRef(({
                 </label>
             )}
 
-            <input
-                type={type}
-                className={cn(
-                    baseInputClasses,
-                    error && "border-destructive focus-visible:ring-destructive",
-                    className
-                )}
-                ref={ref}
-                id={inputId}
-                {...props}
-            />
+            {multiline ? (
+                <textarea
+                    className={cn(
+                        baseInputClasses,
+                        "min-h-[80px] resize-vertical",
+                        error && "border-destructive focus-visible:ring-destructive",
+                        className
+                    )}
+                    ref={ref}
+                    id={inputId}
+                    rows={rows}
+                    {...props}
+                />
+            ) : (
+                <input
+                    type={type}
+                    className={cn(
+                        baseInputClasses,
+                        error && "border-destructive focus-visible:ring-destructive",
+                        className
+                    )}
+                    ref={ref}
+                    id={inputId}
+                    {...props}
+                />
+            )}
 
             {description && !error && (
                 <p className="text-sm text-muted-foreground">

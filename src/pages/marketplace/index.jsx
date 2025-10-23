@@ -67,9 +67,21 @@ const Marketplace = () => {
     setFilters(newFilters);
   };
 
-  const handleVoiceSearch = () => {
-    // Mock voice search functionality
-    alert('Voice search activated! Say something like "I need a tractor for 2 days in Bangalore"');
+  const handleVoiceSearch = async () => {
+    try {
+      const voiceSearchService = (await import('../../services/voiceSearchService')).default;
+      const { transcript, filters: voiceFilters } = await voiceSearchService.performVoiceSearch();
+
+      // Apply the filters from voice search
+      setFilters(prevFilters => ({ ...prevFilters, ...voiceFilters }));
+
+      // Show success message
+      console.log('Voice search completed:', { transcript, voiceFilters });
+      alert(`Voice search: "${transcript}" - Applied filters: ${JSON.stringify(voiceFilters)}`);
+    } catch (error) {
+      console.error('Voice search failed:', error);
+      alert('Voice search failed. Please try again or use text search.');
+    }
   };
 
   const handleCategorySelect = (categoryId) => {

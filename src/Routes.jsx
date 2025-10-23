@@ -9,6 +9,7 @@ import Marketplace from './pages/marketplace';
 import FarmerDashboard from './pages/farmer-dashboard';
 import CommunityFeed from './pages/community-feed';
 import Homepage from './pages/homepage';
+import Profile from './pages/profile';
 import LoginPage from './pages/auth/LoginPage';
 import SignUpPage from './pages/auth/SignUpPage';
 
@@ -26,6 +27,7 @@ const Routes = () => {
         <Route path="/farmer-dashboard" element={<FarmerDashboard />} />
         <Route path="/community-feed" element={<CommunityFeed />} />
         <Route path="/homepage" element={<Homepage />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/signup" element={<SignUpPage />} />
         <Route path="*" element={<NotFound />} />

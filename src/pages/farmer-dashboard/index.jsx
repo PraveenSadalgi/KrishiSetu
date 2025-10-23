@@ -8,11 +8,13 @@ import AIAssistant from './components/AIAssistant';
 import EquipmentOverview from './components/EquipmentOverview';
 import EarningsChart from './components/EarningsChart';
 import NotificationCenter from './components/NotificationCenter';
+import AddEquipmentModal from './components/AddEquipmentModal';
 
 const FarmerDashboard = () => {
   const [currentLanguage, setCurrentLanguage] = useState('en');
   const [userType, setUserType] = useState('owner'); // 'owner' or 'seeker'
   const [activeView, setActiveView] = useState('overview');
+  const [showAddEquipmentModal, setShowAddEquipmentModal] = useState(false);
 
   useEffect(() => {
     const savedLanguage = localStorage.getItem('language') || 'en';
@@ -63,8 +65,18 @@ const FarmerDashboard = () => {
   ];
 
   const handleQuickAction = (action) => {
-    console.log(`Quick action: ${action}`);
-    // Handle different quick actions
+    if (action === 'add-equipment') {
+      setShowAddEquipmentModal(true);
+    } else {
+      console.log(`Quick action: ${action}`);
+      // Handle other quick actions
+    }
+  };
+
+  const handleEquipmentAdded = (newEquipment) => {
+    // Refresh equipment overview or show success message
+    console.log('Equipment added successfully:', newEquipment);
+    // Could trigger a refresh of the EquipmentOverview component here
   };
 
   const renderContent = () => {
@@ -249,6 +261,13 @@ const FarmerDashboard = () => {
           </div>
         </div>
       </main>
+
+      {/* Add Equipment Modal */}
+      <AddEquipmentModal
+        isOpen={showAddEquipmentModal}
+        onClose={() => setShowAddEquipmentModal(false)}
+        onSuccess={handleEquipmentAdded}
+      />
     </div>
   );
 };
