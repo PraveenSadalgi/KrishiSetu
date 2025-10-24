@@ -8,57 +8,10 @@ class VoiceSearchService {
     this.isListening = false;
   }
 
+  // This method is no longer used - speech recognition is handled in AIVoiceInput component
+  // Keeping for backward compatibility but it should not be called
   async performVoiceSearch() {
-    return new Promise((resolve, reject) => {
-      try {
-        // Check if speech recognition is supported
-        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-          throw new Error('Speech recognition not supported in this browser');
-        }
-
-        // Initialize speech recognition
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        this.recognition = new SpeechRecognition();
-
-        this.recognition.continuous = false;
-        this.recognition.interimResults = false;
-        this.recognition.lang = 'en-US';
-
-        this.recognition.onstart = () => {
-          this.isListening = true;
-          console.log('Voice search started...');
-        };
-
-        this.recognition.onresult = async (event) => {
-          const transcript = event.results[0][0].transcript;
-          console.log('Voice transcript:', transcript);
-
-          try {
-            // Process the transcript with Gemini AI
-            const filters = await this.processVoiceQuery(transcript);
-            resolve({ transcript, filters });
-          } catch (error) {
-            reject(new Error('Failed to process voice query: ' + error.message));
-          }
-        };
-
-        this.recognition.onerror = (event) => {
-          console.error('Speech recognition error:', event.error);
-          reject(new Error('Speech recognition failed: ' + event.error));
-        };
-
-        this.recognition.onend = () => {
-          this.isListening = false;
-          console.log('Voice search ended');
-        };
-
-        // Start listening
-        this.recognition.start();
-
-      } catch (error) {
-        reject(error);
-      }
-    });
+    throw new Error('performVoiceSearch is deprecated. Use AIVoiceInput component directly.');
   }
 
   async processVoiceQuery(transcript) {

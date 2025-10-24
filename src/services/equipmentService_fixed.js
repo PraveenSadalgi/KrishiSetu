@@ -183,35 +183,6 @@ export const equipmentService = {
     }
   },
 
-  // Get category counts with equipment aggregation
-  async getCategoryCounts() {
-    try {
-      const { data, error } = await supabase
-        ?.from('equipment')
-        ?.select(`
-          category_id,
-          equipment_categories!inner(
-            id,
-            name
-          )
-        `)
-        ?.eq('status', 'available');
-
-      if (error) throw error;
-
-      // Aggregate counts by category
-      const counts = {};
-      data?.forEach(item => {
-        const categoryId = item.category_id;
-        counts[categoryId] = (counts[categoryId] || 0) + 1;
-      });
-
-      return { data: counts, error: null };
-    } catch (error) {
-      return { data: null, error };
-    }
-  },
-
   // Search equipment
   async searchEquipment(searchQuery, filters = {}) {
     try {

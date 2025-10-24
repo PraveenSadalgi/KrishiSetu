@@ -25,68 +25,27 @@ export const equipmentService = {
       if (filters?.status) {
         query = query?.eq('status', filters?.status);
       }
-
-      // Handle category filtering - if category is a string name, get the UUID first
+      
       if (filters?.category) {
-        if (typeof filters.category === 'string' && filters.category.length > 0) {
-          // Check if it's already a UUID or a category name
-          const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(filters.category);
-
-          if (!isUUID) {
-            // It's a category name, get the UUID
-            const { data: categoryData, error: categoryError } = await supabase
-              ?.from('equipment_categories')
-              ?.select('id')
-              ?.eq('name', filters.category)
-              ?.single();
-
-            if (categoryError) {
-              console.warn('Category not found:', filters.category);
-            } else if (categoryData) {
-              query = query?.eq('category_id', categoryData.id);
-            }
-          } else {
-            // It's already a UUID
-            query = query?.eq('category_id', filters?.category);
-          }
-        }
+        query = query?.eq('category_id', filters?.category);
       }
-
+      
       if (filters?.location) {
         // Add location-based filtering logic here
       }
-
+      
       if (filters?.priceRange) {
-        if (filters?.priceRange?.min !== undefined) {
+        if (filters?.priceRange?.min) {
           query = query?.gte('price_per_day', filters?.priceRange?.min);
         }
-        if (filters?.priceRange?.max !== undefined) {
+        if (filters?.priceRange?.max) {
           query = query?.lte('price_per_day', filters?.priceRange?.max);
-        }
-      }
-
-      // Add search query filter
-      if (filters?.searchQuery) {
-        query = query?.or(`name.ilike.%${filters.searchQuery}%,description.ilike.%${filters.searchQuery}%,brand.ilike.%${filters.searchQuery}%`);
-      }
-
-      // Add rating filter
-      if (filters?.rating) {
-        query = query?.gte('rating_average', parseFloat(filters.rating));
-      }
-
-      // Add availability filter (assuming availability is based on status)
-      if (filters?.availability) {
-        // This would need to be implemented based on your booking system
-        // For now, we'll filter by status
-        if (filters.availability === 'today') {
-          query = query?.eq('status', 'available');
         }
       }
 
       const { data, error } = await query;
       if (error) throw error;
-
+      
       return { data, error: null };
     } catch (error) {
       return { data: null, error };
@@ -183,35 +142,6 @@ export const equipmentService = {
     }
   },
 
-  // Get category counts with equipment aggregation
-  async getCategoryCounts() {
-    try {
-      const { data, error } = await supabase
-        ?.from('equipment')
-        ?.select(`
-          category_id,
-          equipment_categories!inner(
-            id,
-            name
-          )
-        `)
-        ?.eq('status', 'available');
-
-      if (error) throw error;
-
-      // Aggregate counts by category
-      const counts = {};
-      data?.forEach(item => {
-        const categoryId = item.category_id;
-        counts[categoryId] = (counts[categoryId] || 0) + 1;
-      });
-
-      return { data: counts, error: null };
-    } catch (error) {
-      return { data: null, error };
-    }
-  },
-
   // Search equipment
   async searchEquipment(searchQuery, filters = {}) {
     try {
@@ -243,7 +173,7 @@ export const equipmentService = {
 
       const { data, error } = await query?.order('rating_average', { ascending: false });
       if (error) throw error;
-
+      
       return { data, error: null };
     } catch (error) {
       return { data: null, error };

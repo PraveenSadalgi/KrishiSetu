@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import Icon from '../../../components/AppIcon';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import Button from '../../../components/ui/Button';
-import { equipmentService } from '../../../services/equipmentService';
+import { AIVoiceInput } from '../../../components/ui/ai-voice-input';
 
-const SearchFilters = ({ onFiltersChange }) => {
+const SearchFilters = ({ onFiltersChange, onVoiceSearch }) => {
   const [filters, setFilters] = useState({
     searchQuery: '',
     category: '',
@@ -14,45 +15,20 @@ const SearchFilters = ({ onFiltersChange }) => {
     rating: ''
   });
 
-  const [categoryOptions, setCategoryOptions] = useState([
-    { value: '', label: 'All Categories' }
-  ]);
-
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [showVoiceInput, setShowVoiceInput] = useState(false);
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const { data, error } = await equipmentService.getCategories();
-        if (error) throw error;
-
-        const options = [
-          { value: '', label: 'All Categories' },
-          ...data?.map(category => ({
-            value: category.id, // Use UUID for filtering
-            label: category.name
-          }))
-        ];
-        setCategoryOptions(options);
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-        // Fallback to hardcoded categories
-        setCategoryOptions([
-          { value: '', label: 'All Categories' },
-          { value: 'tractors', label: 'Tractors' },
-          { value: 'harvesters', label: 'Harvesters' },
-          { value: 'tillers', label: 'Tillers & Cultivators' },
-          { value: 'sprayers', label: 'Sprayers' },
-          { value: 'seeders', label: 'Seeders & Planters' },
-          { value: 'irrigation', label: 'Irrigation Equipment' },
-          { value: 'threshers', label: 'Threshers' },
-          { value: 'others', label: 'Other Equipment' }
-        ]);
-      }
-    };
-
-    fetchCategories();
-  }, []);
+  const categoryOptions = [
+    { value: '', label: 'All Categories' },
+    { value: 'tractors', label: 'Tractors' },
+    { value: 'harvesters', label: 'Harvesters' },
+    { value: 'tillers', label: 'Tillers & Cultivators' },
+    { value: 'sprayers', label: 'Sprayers' },
+    { value: 'seeders', label: 'Seeders & Planters' },
+    { value: 'irrigation', label: 'Irrigation Equipment' },
+    { value: 'threshers', label: 'Threshers' },
+    { value: 'others', label: 'Other Equipment' }
+  ];
 
   const priceRangeOptions = [
     { value: '', label: 'Any Price' },
@@ -87,23 +63,8 @@ const SearchFilters = ({ onFiltersChange }) => {
     { value: '2', label: '2+ Stars' }
   ];
 
-  const parsePriceRange = (priceRange) => {
-    if (!priceRange) return null;
-    if (priceRange.includes('+')) {
-      return { min: parseInt(priceRange.split('+')[0]) };
-    }
-    const [min, max] = priceRange.split('-').map(p => parseInt(p));
-    return { min, max };
-  };
-
   const handleFilterChange = (key, value) => {
     const newFilters = { ...filters, [key]: value };
-
-    // Parse price range if it's a price filter
-    if (key === 'priceRange' && value) {
-      newFilters.priceRange = parsePriceRange(value);
-    }
-
     setFilters(newFilters);
     onFiltersChange(newFilters);
   };
@@ -121,7 +82,19 @@ const SearchFilters = ({ onFiltersChange }) => {
     onFiltersChange(clearedFilters);
   };
 
+  const handleVoiceSearch = () => {
+    setShowVoiceInput(true);
+  };
 
+  const handleVoiceResult = (transcript) => {
+    setShowVoiceInput(false);
+    handleFilterChange('searchQuery', transcript);
+    onVoiceSearch(transcript);
+  };
+
+  const handleVoiceCancel = () => {
+    setShowVoiceInput(false);
+  };
 
   const hasActiveFilters = Object.values(filters)?.some(value => value !== '');
 
@@ -129,13 +102,21 @@ const SearchFilters = ({ onFiltersChange }) => {
     <div className="bg-card border border-border rounded-lg p-4 shadow-organic">
       {/* Main Search Bar */}
       <div className="flex gap-3 mb-4">
-        <div className="flex-1">
+        <div className="flex-1 relative">
           <Input
             type="search"
             placeholder="Search equipment by name, type, or location..."
             value={filters?.searchQuery}
             onChange={(e) => handleFilterChange('searchQuery', e?.target?.value)}
+            className="pr-12"
           />
+          <button
+            onClick={handleVoiceSearch}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-primary organic-transition"
+            title="Voice Search"
+          >
+            <Icon name="Mic" size={18} />
+          </button>
         </div>
         <Button
           variant="outline"
@@ -151,7 +132,7 @@ const SearchFilters = ({ onFiltersChange }) => {
         {categoryOptions?.slice(1, 6)?.map((category) => (
           <button
             key={category?.value}
-            onClick={() => handleFilterChange('category',
+            onClick={() => handleFilterChange('category', 
               filters?.category === category?.value ? '' : category?.value
             )}
             className={`px-3 py-1.5 rounded-full text-sm font-medium organic-transition ${
@@ -164,7 +145,13 @@ const SearchFilters = ({ onFiltersChange }) => {
           </button>
         ))}
       </div>
-
+      {/* Voice Input Modal */}
+      {showVoiceInput && (
+        <AIVoiceInput
+          onResult={handleVoiceResult}
+          onCancel={handleVoiceCancel}
+        />
+      )}
 
       {/* Advanced Filters */}
       {isAdvancedOpen && (

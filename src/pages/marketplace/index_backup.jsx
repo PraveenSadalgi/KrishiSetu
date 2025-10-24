@@ -67,7 +67,22 @@ const Marketplace = () => {
     setFilters(newFilters);
   };
 
+  const handleVoiceSearch = async () => {
+    try {
+      const voiceSearchService = (await import('../../services/voiceSearchService')).default;
+      const { transcript, filters: voiceFilters } = await voiceSearchService.performVoiceSearch();
 
+      // Apply the filters from voice search
+      setFilters(prevFilters => ({ ...prevFilters, ...voiceFilters }));
+
+      // Show success message
+      console.log('Voice search completed:', { transcript, voiceFilters });
+      alert(`Voice search: "${transcript}" - Applied filters: ${JSON.stringify(voiceFilters)}`);
+    } catch (error) {
+      console.error('Voice search failed:', error);
+      alert('Voice search failed. Please try again or use text search.');
+    }
+  };
 
   const handleCategorySelect = (categoryId) => {
     setFilters((prev) => ({ ...prev, category: categoryId }));
@@ -96,7 +111,8 @@ const Marketplace = () => {
 
             {/* Search Filters */}
             <SearchFilters
-              onFiltersChange={handleFiltersChange} />
+              onFiltersChange={handleFiltersChange}
+              onVoiceSearch={handleVoiceSearch} />
 
           </div>
         </section>
@@ -109,7 +125,7 @@ const Marketplace = () => {
               <div className="lg:col-span-1 space-y-6">
                 {/* Category Grid */}
                 <CategoryGrid onCategorySelect={handleCategorySelect} />
-
+                
                 {/* AI Recommendations */}
                 <AIRecommendations onEquipmentSelect={handleEquipmentSelect} />
               </div>
@@ -124,7 +140,7 @@ const Marketplace = () => {
                       {Object.values(filters)?.filter((v) => v !== '')?.length} active filters
                     </span>
                   </div>
-
+                  
                   <div className="flex items-center bg-muted rounded-lg p-1">
                     <button
                       onClick={() => setViewMode('grid')}
@@ -186,7 +202,7 @@ const Marketplace = () => {
                 <h3 className="font-semibold text-foreground mb-1">Verified Equipment</h3>
                 <p className="text-sm text-muted-foreground">All equipment is inspected and verified</p>
               </div>
-
+              
               <div className="text-center">
                 <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-3">
                   <Icon name="Clock" size={24} className="text-success" />
@@ -194,7 +210,7 @@ const Marketplace = () => {
                 <h3 className="font-semibold text-foreground mb-1">24/7 Support</h3>
                 <p className="text-sm text-muted-foreground">Round-the-clock customer assistance</p>
               </div>
-
+              
               <div className="text-center">
                 <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-3">
                   <Icon name="CreditCard" size={24} className="text-secondary" />
@@ -202,7 +218,7 @@ const Marketplace = () => {
                 <h3 className="font-semibold text-foreground mb-1">Secure Payments</h3>
                 <p className="text-sm text-muted-foreground">UPI, cards, and wallet support</p>
               </div>
-
+              
               <div className="text-center">
                 <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-3">
                   <Icon name="MapPin" size={24} className="text-accent" />
