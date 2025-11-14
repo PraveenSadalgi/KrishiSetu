@@ -207,7 +207,7 @@ const HeroSection = () => {
 
               <div className="relative overflow-hidden rounded-3xl shadow-organic-lg">
                 <Image
-                  src="https://images.unsplash.com/photo-1695653422715-991ec3a0db7a"
+                  src="https://images.unsplash.com/photo-1614977645540-7abd88ba8e56?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1973"
                   alt="Modern Indian farmer using smartphone in green agricultural field with advanced farming equipment in background"
                   className="w-full h-[500px] lg:h-[600px] object-cover" />
 
@@ -218,10 +218,10 @@ const HeroSection = () => {
                     <div className="w-10 h-10 bg-success rounded-full flex items-center justify-center">
                       <Icon name="Tractor" size={20} className="text-success-foreground" />
                     </div>
-                    <div>
+                    {/* <div>
                       <p className="font-semibold text-sm">Equipment Available</p>
                       <p className="text-xs text-muted-foreground">2.5km away</p>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
 
@@ -230,10 +230,10 @@ const HeroSection = () => {
                     <div className="w-10 h-10 bg-harvest-orange rounded-full flex items-center justify-center">
                       <Icon name="Users" size={20} className="text-harvest-orange-foreground" />
                     </div>
-                    <div>
+                    {/* <div>
                       <p className="font-semibold text-sm">Active Farmers</p>
                       <p className="text-xs text-muted-foreground">1,247 online</p>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>

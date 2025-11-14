@@ -9,14 +9,46 @@ npm-debug.log*
 # Environment files
 .env
 .env.local
+.env.*
+.env.local.*
+.env.production
+.env.development
+.env.test
+.env.staging
+
+# Secrets and keys
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.json
+config/secrets.json
 
 # Build outputs
 dist/
 build/
 out/
 
+# Temporary files
+*.tmp
+*.temp
+*~
+*.swp
+*.swo
+.cache/
+.tmp/
+
+# Backup files
+*_backup.*
+*~
+
 # IDE and OS files
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3

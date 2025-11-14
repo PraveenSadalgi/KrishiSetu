@@ -73,6 +73,14 @@ const Marketplace = () => {
     setFilters((prev) => ({ ...prev, category: categoryId }));
   };
 
+  const handleClearCategoryFilter = () => {
+    setFilters((prev) => {
+      const newFilters = { ...prev };
+      delete newFilters.category;
+      return newFilters;
+    });
+  };
+
   const handleEquipmentSelect = (equipment) => {
     setSelectedEquipment(equipment);
   };
@@ -108,7 +116,11 @@ const Marketplace = () => {
               {/* Sidebar */}
               <div className="lg:col-span-1 space-y-6">
                 {/* Category Grid */}
-                <CategoryGrid onCategorySelect={handleCategorySelect} />
+                <CategoryGrid
+                  onCategorySelect={handleCategorySelect}
+                  selectedCategoryId={filters.category}
+                  onClearFilter={handleClearCategoryFilter}
+                />
 
                 {/* AI Recommendations */}
                 <AIRecommendations onEquipmentSelect={handleEquipmentSelect} />

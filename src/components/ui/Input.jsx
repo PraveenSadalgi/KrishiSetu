@@ -79,6 +79,11 @@ const Input = React.forwardRef(({
                     id={inputId}
                     rows={rows}
                     {...props}
+                    onChange={(e) => {
+                        if (props.onChange) {
+                            props.onChange(e.target.value);
+                        }
+                    }}
                 />
             ) : (
                 <input
@@ -91,6 +96,11 @@ const Input = React.forwardRef(({
                     ref={ref}
                     id={inputId}
                     {...props}
+                    onChange={(e) => {
+                        if (props.onChange) {
+                            props.onChange(e.target.value);
+                        }
+                    }}
                 />
             )}
 

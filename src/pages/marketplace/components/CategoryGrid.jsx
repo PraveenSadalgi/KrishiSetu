@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
 import { equipmentService } from '../../../services/equipmentService';
 
-const CategoryGrid = ({ onCategorySelect }) => {
+const CategoryGrid = ({ onCategorySelect, selectedCategoryId, onClearFilter }) => {
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoryCounts, setCategoryCounts] = useState({});
@@ -122,10 +122,10 @@ const CategoryGrid = ({ onCategorySelect }) => {
       <div className="bg-card border border-border rounded-lg p-6 shadow-organic">
         <div className="animate-pulse">
           <div className="h-6 bg-muted rounded mb-4"></div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="p-4 border border-border rounded-lg">
-                <div className="w-12 h-12 bg-muted rounded-lg mb-3"></div>
+              <div key={i} className="p-5 border-2 border-border rounded-xl">
+                <div className="w-14 h-14 bg-muted rounded-xl mb-4"></div>
                 <div className="h-4 bg-muted rounded mb-2"></div>
                 <div className="h-3 bg-muted rounded"></div>
               </div>
@@ -147,39 +147,59 @@ const CategoryGrid = ({ onCategorySelect }) => {
             Find the right equipment for your farming needs
           </p>
         </div>
-        <button className="text-primary hover:text-primary/80 organic-transition text-sm font-medium">
-          View All Categories
-        </button>
+        <div className="flex items-center gap-2">
+          {selectedCategoryId && (
+            <button
+              onClick={onClearFilter}
+              className="text-sm text-muted-foreground hover:text-foreground organic-transition flex items-center gap-1"
+            >
+              <Icon name="X" size={16} />
+              Clear Filter
+            </button>
+          )}
+          <button className="text-primary hover:text-primary/80 organic-transition text-sm font-medium">
+            View All Categories
+          </button>
+        </div>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
         {categories?.map((category) => (
           <button
             key={category?.id}
             onClick={() => onCategorySelect(category?.id)}
-            className="group p-4 rounded-lg border border-border hover:border-primary/20 hover:shadow-organic organic-transition text-left"
+            className={`group relative p-5 rounded-xl border-2 organic-transition text-left cursor-pointer hover:shadow-lg hover:-translate-y-1 ${
+              selectedCategoryId === category?.id
+                ? 'border-primary bg-primary/5 shadow-organic ring-2 ring-primary/20'
+                : 'border-border hover:border-primary/30 hover:shadow-organic'
+            }`}
           >
-            <div className={`w-12 h-12 rounded-lg ${category?.color} flex items-center justify-center mb-3 group-hover:scale-110 organic-transition`}>
-              <Icon name={category?.icon} size={24} />
+            <div className={`w-14 h-14 rounded-xl ${category?.color} flex items-center justify-center mb-4 group-hover:scale-110 organic-transition shadow-sm`}>
+              <Icon name={category?.icon} size={28} />
             </div>
 
-            <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary organic-transition">
+            <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary organic-transition text-base leading-tight">
               {category?.name}
             </h3>
 
-            <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+            <p className="text-sm text-muted-foreground mb-3 line-clamp-2 leading-relaxed">
               {category?.description}
             </p>
 
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-primary">
+            <div className="flex items-center justify-between mt-auto">
+              <span className="text-sm font-semibold text-primary bg-primary/10 px-2 py-1 rounded-md">
                 {category?.count} items
               </span>
               <Icon
                 name="ArrowRight"
-                size={16}
+                size={18}
                 className="text-muted-foreground group-hover:text-primary group-hover:translate-x-1 organic-transition"
               />
             </div>
+
+            {/* Active indicator */}
+            {selectedCategoryId === category?.id && (
+              <div className="absolute top-3 right-3 w-3 h-3 bg-primary rounded-full animate-pulse"></div>
+            )}
           </button>
         ))}
       </div>

@@ -1,12 +1,57 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import { mapService } from '../../../services/mapService';
 
 const MapView = ({ equipmentList, onEquipmentSelect }) => {
+  const mapRef = useRef(null);
   const [selectedEquipment, setSelectedEquipment] = useState(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
+  const [mapError, setMapError] = useState(null);
 
-  // Mock coordinates for demonstration
-  const mapCenter = { lat: 12.9716, lng: 77.5946 }; // Bangalore coordinates
+  useEffect(() => {
+    initializeMap();
+  }, []);
+
+  useEffect(() => {
+    if (mapLoaded && equipmentList) {
+      updateEquipmentMarkers();
+    }
+  }, [equipmentList, mapLoaded]);
+
+  const initializeMap = async () => {
+    try {
+      if (!mapRef.current) return;
+
+      await mapService.createMap(mapRef.current);
+      setMapLoaded(true);
+
+      // Try to get user's location
+      try {
+        const location = await mapService.getCurrentLocation();
+        setUserLocation(location);
+        mapService.addUserLocationMarker(location);
+      } catch (locationError) {
+        console.warn('Could not get user location:', locationError);
+      }
+    } catch (error) {
+      console.error('Failed to initialize map:', error);
+      setMapError('Failed to load Google Maps. Please check your API key.');
+    }
+  };
+
+  const updateEquipmentMarkers = () => {
+    if (!equipmentList || equipmentList.length === 0) return;
+
+    // Transform equipment data to include availability status
+    const transformedEquipment = equipmentList.map(equipment => ({
+      ...equipment,
+      isAvailable: equipment.status === 'available'
+    }));
+
+    mapService.addEquipmentMarkers(transformedEquipment, handleMarkerClick);
+  };
 
   const handleMarkerClick = (equipment) => {
     setSelectedEquipment(equipment);
@@ -18,27 +63,77 @@ const MapView = ({ equipmentList, onEquipmentSelect }) => {
       style: 'currency',
       currency: 'INR',
       maximumFractionDigits: 0
-    })?.format(price);
+    }).format(price);
   };
+
+  const handleZoomIn = () => {
+    if (mapService.map) {
+      const currentZoom = mapService.map.getZoom();
+      mapService.map.setZoom(currentZoom + 1);
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (mapService.map) {
+      const currentZoom = mapService.map.getZoom();
+      mapService.map.setZoom(currentZoom - 1);
+    }
+  };
+
+  const handleMyLocation = async () => {
+    try {
+      const location = await mapService.getCurrentLocation();
+      setUserLocation(location);
+
+      if (mapService.map) {
+        mapService.map.setCenter(location);
+        mapService.map.setZoom(14);
+      }
+
+      // Add or update user location marker
+      mapService.clearMarkers();
+      mapService.addUserLocationMarker(location);
+      updateEquipmentMarkers();
+    } catch (error) {
+      console.error('Failed to get location:', error);
+      // Could show a toast notification here
+    }
+  };
+
+  if (mapError) {
+    return (
+      <div className="h-full bg-muted rounded-lg flex items-center justify-center">
+        <div className="text-center p-6">
+          <Icon name="AlertTriangle" size={48} className="text-destructive mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">Map Unavailable</h3>
+          <p className="text-muted-foreground">{mapError}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-full bg-muted rounded-lg overflow-hidden">
-      {/* Google Maps Iframe */}
-      <iframe
-        width="100%"
-        height="100%"
-        loading="lazy"
-        title="Equipment Locations Map"
-        referrerPolicy="no-referrer-when-downgrade"
-        src={`https://www.google.com/maps?q=${mapCenter?.lat},${mapCenter?.lng}&z=12&output=embed`}
-        className="border-0"
-      />
+      {/* Map Container */}
+      <div ref={mapRef} className="w-full h-full" />
+
+      {/* Loading Overlay */}
+      {!mapLoaded && (
+        <div className="absolute inset-0 bg-muted flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading map...</p>
+          </div>
+        </div>
+      )}
+
       {/* Map Controls */}
       <div className="absolute top-4 right-4 flex flex-col gap-2">
         <Button
           variant="outline"
           size="icon"
-          className="bg-background/90 backdrop-blur-sm"
+          className="bg-background/90 backdrop-blur-sm hover:bg-background"
+          onClick={handleZoomIn}
           title="Zoom In"
         >
           <Icon name="Plus" size={16} />
@@ -46,7 +141,8 @@ const MapView = ({ equipmentList, onEquipmentSelect }) => {
         <Button
           variant="outline"
           size="icon"
-          className="bg-background/90 backdrop-blur-sm"
+          className="bg-background/90 backdrop-blur-sm hover:bg-background"
+          onClick={handleZoomOut}
           title="Zoom Out"
         >
           <Icon name="Minus" size={16} />
@@ -54,48 +150,33 @@ const MapView = ({ equipmentList, onEquipmentSelect }) => {
         <Button
           variant="outline"
           size="icon"
-          className="bg-background/90 backdrop-blur-sm"
+          className="bg-background/90 backdrop-blur-sm hover:bg-background"
+          onClick={handleMyLocation}
           title="My Location"
         >
           <Icon name="Locate" size={16} />
         </Button>
       </div>
-      {/* Equipment Markers Overlay */}
-      <div className="absolute inset-0 pointer-events-none">
-        {equipmentList?.slice(0, 8)?.map((equipment, index) => (
-          <div
-            key={equipment?.id}
-            className="absolute pointer-events-auto"
-            style={{
-              left: `${20 + (index % 4) * 20}%`,
-              top: `${20 + Math.floor(index / 4) * 30}%`
-            }}
-          >
-            <button
-              onClick={() => handleMarkerClick(equipment)}
-              className={`relative p-2 rounded-full shadow-lg organic-transition hover:scale-110 ${
-                equipment?.isAvailable
-                  ? 'bg-success text-success-foreground'
-                  : 'bg-destructive text-destructive-foreground'
-              }`}
-            >
-              <Icon name="MapPin" size={20} />
-              
-              {/* Price Badge */}
-              <div className="absolute -top-2 -right-2 bg-background text-foreground text-xs font-medium px-1.5 py-0.5 rounded-full shadow-sm border border-border">
-                {formatPrice(equipment?.pricePerDay)?.replace('₹', '₹')}
-              </div>
-            </button>
+
+      {/* Equipment Count Badge */}
+      {equipmentList && equipmentList.length > 0 && (
+        <div className="absolute top-4 left-4 bg-background/90 backdrop-blur-sm border border-border rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2">
+            <Icon name="MapPin" size={16} className="text-primary" />
+            <span className="text-sm font-medium">
+              {equipmentList.length} equipment{equipmentList.length !== 1 ? 's' : ''} found
+            </span>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+
       {/* Selected Equipment Info Card */}
       {selectedEquipment && (
         <div className="absolute bottom-4 left-4 right-4 bg-card border border-border rounded-lg p-4 shadow-organic-lg">
           <div className="flex items-start gap-3">
             <img
-              src={selectedEquipment?.image}
-              alt={selectedEquipment?.imageAlt}
+              src={selectedEquipment?.images?.[0] || '/assets/images/no_image.png'}
+              alt={selectedEquipment?.name}
               className="w-16 h-16 rounded-lg object-cover"
             />
             <div className="flex-1 min-w-0">
@@ -103,7 +184,8 @@ const MapView = ({ equipmentList, onEquipmentSelect }) => {
                 {selectedEquipment?.name}
               </h4>
               <p className="text-sm text-muted-foreground mb-2">
-                {selectedEquipment?.location} • {selectedEquipment?.distance} km away
+                {selectedEquipment?.location?.city || 'Location not available'}
+                {selectedEquipment?.distance && ` • ${selectedEquipment.distance} km away`}
               </p>
               <div className="flex items-center justify-between">
                 <div className="text-lg font-bold text-primary">
@@ -111,7 +193,9 @@ const MapView = ({ equipmentList, onEquipmentSelect }) => {
                 </div>
                 <div className="flex items-center gap-1">
                   <Icon name="Star" size={14} className="text-yellow-400 fill-current" />
-                  <span className="text-sm font-medium">{selectedEquipment?.rating}</span>
+                  <span className="text-sm font-medium">
+                    {selectedEquipment?.ratingAverage || selectedEquipment?.rating || 'N/A'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -122,13 +206,13 @@ const MapView = ({ equipmentList, onEquipmentSelect }) => {
               <Icon name="X" size={16} />
             </button>
           </div>
-          
+
           <div className="flex gap-2 mt-3">
             <Button variant="outline" size="sm" fullWidth>
               View Details
             </Button>
-            <Button 
-              variant="default" 
+            <Button
+              variant="default"
               size="sm"
               className="bg-conversion-cta hover:bg-conversion-cta/90"
               disabled={!selectedEquipment?.isAvailable}
@@ -138,6 +222,7 @@ const MapView = ({ equipmentList, onEquipmentSelect }) => {
           </div>
         </div>
       )}
+
       {/* Legend */}
       <div className="absolute top-4 left-4 bg-card border border-border rounded-lg p-3 shadow-organic">
         <h4 className="font-medium text-foreground mb-2 text-sm">Equipment Status</h4>
