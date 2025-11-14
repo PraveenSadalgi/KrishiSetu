@@ -103,13 +103,13 @@ const AddEquipmentModal = ({ isOpen, onClose, onSuccess }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.name.trim()) newErrors.name = 'Equipment name is required';
-    if (!formData.description.trim()) newErrors.description = 'Description is required';
+    if (!formData.name || !formData.name.trim()) newErrors.name = 'Equipment name is required';
+    if (!formData.description || !formData.description.trim()) newErrors.description = 'Description is required';
     if (!formData.category_id) newErrors.category_id = 'Category is required';
     if (!formData.price_per_day || formData.price_per_day <= 0) newErrors.price_per_day = 'Valid daily price is required';
-    if (!formData.address.trim()) newErrors.address = 'Address is required';
-    if (!formData.city.trim()) newErrors.city = 'City is required';
-    if (!formData.state.trim()) newErrors.state = 'State is required';
+    if (!formData.address || !formData.address.trim()) newErrors.address = 'Address is required';
+    if (!formData.city || !formData.city.trim()) newErrors.city = 'City is required';
+    if (!formData.state || !formData.state.trim()) newErrors.state = 'State is required';
     if (formData.year_manufactured && (formData.year_manufactured < 1900 || formData.year_manufactured > new Date().getFullYear())) {
       newErrors.year_manufactured = 'Enter a valid year';
     }
