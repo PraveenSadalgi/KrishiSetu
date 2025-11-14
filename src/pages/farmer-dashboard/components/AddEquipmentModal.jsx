@@ -48,7 +48,8 @@ const AddEquipmentModal = ({ isOpen, onClose, onSuccess }) => {
     }
   };
 
-  const handleInputChange = (field, value) => {
+  const handleInputChange = (field, e) => {
+    const value = e?.target?.value;
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
