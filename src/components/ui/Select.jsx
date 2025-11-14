@@ -178,11 +178,12 @@ const Select = React.forwardRef(({
                             <div className="p-2 border-b">
                                 <div className="relative">
                                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                    <Input
+                                    <input
+                                        type="text"
                                         placeholder="Search options..."
                                         value={searchTerm}
                                         onChange={handleSearchChange}
-                                        className="pl-8"
+                                        className="w-full pl-8 pr-3 py-2 text-sm border-0 bg-transparent focus:outline-none"
                                     />
                                 </div>
                             </div>
