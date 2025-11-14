@@ -98,7 +98,7 @@ const Input = React.forwardRef(({
                     {...props}
                     onChange={(e) => {
                         if (props.onChange) {
-                            props.onChange(e.target.value);
+                            props.onChange(e);
                         }
                     }}
                 />
