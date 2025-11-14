@@ -1,49 +1,70 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../../contexts/AuthContext';
+import { equipmentService } from '../../../services/equipmentService';
+import { supabase } from '../../../lib/supabase';
 import Icon from '../../../components/AppIcon';
 import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
 
 const EquipmentOverview = () => {
-  const equipment = [
-  {
-    id: 1,
-    name: "John Deere Tractor 5050D",
-    category: "Tractor",
-    status: "rented",
-    image: "https://images.unsplash.com/photo-1622422931446-6e5c3a2610b1",
-    imageAlt: "Green John Deere tractor in agricultural field with clear blue sky background",
-    currentRenter: "Rajesh Kumar",
-    rentalEndDate: "2025-01-20",
-    monthlyEarnings: "₹12,500",
-    utilizationRate: 85,
-    nextMaintenance: "2025-02-15"
-  },
-  {
-    id: 2,
-    name: "Mahindra Harvester",
-    category: "Harvester",
-    status: "available",
-    image: "https://images.unsplash.com/photo-1731603363718-9c74f6531a21",
-    imageAlt: "Red Mahindra combine harvester working in golden wheat field during harvest season",
-    currentRenter: null,
-    rentalEndDate: null,
-    monthlyEarnings: "₹8,200",
-    utilizationRate: 65,
-    nextMaintenance: "2025-03-10"
-  },
-  {
-    id: 3,
-    name: "Rotary Tiller",
-    category: "Tiller",
-    status: "maintenance",
-    image: "https://images.unsplash.com/photo-1723585647220-731072d1c0c9",
-    imageAlt: "Orange rotary tiller attachment working soil in prepared agricultural field",
-    currentRenter: null,
-    rentalEndDate: null,
-    monthlyEarnings: "₹4,800",
-    utilizationRate: 45,
-    nextMaintenance: "In Progress"
-  }];
+  const { user } = useAuth();
+  const [equipment, setEquipment] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (user?.id) {
+      loadEquipment();
+
+      // Set up realtime subscription for equipment
+      const subscription = supabase
+        .channel('equipment-overview-realtime')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'equipment',
+          filter: `owner_id=eq.${user.id}`
+        }, (payload) => {
+          console.log('Equipment change detected:', payload);
+          loadEquipment(); // Reload equipment on any change
+        })
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+  }, [user]);
+
+  const loadEquipment = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await equipmentService.getUserEquipment(user.id);
+      if (error) throw error;
+
+      // Transform equipment data to match expected format
+      const transformedEquipment = data?.map(item => ({
+        id: item.id,
+        name: item.name,
+        category: item.category?.name || 'Unknown Category',
+        status: item.status || 'available',
+        image: item.images?.[0] || '/assets/images/no_image.png',
+        imageAlt: `Image of ${item.name}`,
+        currentRenter: item.current_booking?.renter?.full_name || null,
+        rentalEndDate: item.current_booking?.end_date || null,
+        monthlyEarnings: `₹${item.monthly_earnings || 0}`,
+        utilizationRate: item.utilization_rate || 0,
+        nextMaintenance: item.next_maintenance || 'Not scheduled'
+      })) || [];
+
+      setEquipment(transformedEquipment);
+    } catch (err) {
+      console.error('Error loading equipment:', err);
+      setError('Failed to load equipment');
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
   const getStatusColor = (status) => {

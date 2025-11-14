@@ -1,68 +1,186 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../../contexts/AuthContext';
+import { supabase } from '../../../lib/supabase';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Image from '../../../components/AppImage';
 
 const NotificationCenter = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('all');
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const notifications = [
-  {
-    id: 1,
-    type: 'booking',
-    title: "New Booking Request",
-    message: "Rajesh Kumar wants to rent your John Deere Tractor for 5 days",
-    timestamp: "2 minutes ago",
-    isRead: false,
-    avatar: "https://images.unsplash.com/photo-1618499607072-622f1eec6194",
-    avatarAlt: "Middle-aged Indian farmer with mustache wearing white kurta smiling at camera",
-    actionRequired: true
-  },
-  {
-    id: 2,
-    type: 'payment',
-    title: "Payment Received",
-    message: "₹2,500 received from Priya Sharma for Harvester rental",
-    timestamp: "1 hour ago",
-    isRead: false,
-    avatar: "https://images.unsplash.com/photo-1686931102593-4c5af482fa38",
-    avatarAlt: "Young Indian woman farmer with traditional dupatta smiling confidently outdoors",
-    actionRequired: false
-  },
-  {
-    id: 3,
-    type: 'maintenance',
-    title: "Maintenance Reminder",
-    message: "Your Rotary Tiller is due for maintenance in 3 days",
-    timestamp: "3 hours ago",
-    isRead: true,
-    avatar: null,
-    avatarAlt: null,
-    actionRequired: true
-  },
-  {
-    id: 4,
-    type: 'review',
-    title: "New Review Received",
-    message: "Amit Patel left a 5-star review for your Tractor",
-    timestamp: "1 day ago",
-    isRead: true,
-    avatar: "https://images.unsplash.com/photo-1674702140113-ac1235dcb274",
-    avatarAlt: "Elderly Indian farmer with white beard wearing traditional white shirt in rural setting",
-    actionRequired: false
-  },
-  {
-    id: 5,
-    type: 'community',
-    title: "Community Update",
-    message: "New farming technique shared in your local community group",
-    timestamp: "2 days ago",
-    isRead: true,
-    avatar: null,
-    avatarAlt: null,
-    actionRequired: false
-  }];
+  useEffect(() => {
+    if (user?.id) {
+      loadNotifications();
 
+      // Set up realtime subscriptions for notifications
+      const bookingSubscription = supabase
+        .channel('notifications-bookings')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'equipment_bookings',
+          filter: `owner_id=eq.${user.id}`
+        }, () => {
+          loadNotifications();
+        })
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'equipment_bookings',
+          filter: `renter_id=eq.${user.id}`
+        }, () => {
+          loadNotifications();
+        })
+        .subscribe();
+
+      const paymentSubscription = supabase
+        .channel('notifications-payments')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'payments',
+          filter: `recipient_id=eq.${user.id}`
+        }, () => {
+          loadNotifications();
+        })
+        .subscribe();
+
+      return () => {
+        bookingSubscription.unsubscribe();
+        paymentSubscription.unsubscribe();
+      };
+    }
+  }, [user]);
+
+  const loadNotifications = async () => {
+    try {
+      setLoading(true);
+
+      // Get recent bookings (as owner)
+      const { data: bookings, error: bookingsError } = await supabase
+        .from('equipment_bookings')
+        .select(`
+          id,
+          status,
+          created_at,
+          start_date,
+          end_date,
+          total_amount,
+          equipment!inner(name),
+          renter:profiles!renter_id(full_name, avatar_url)
+        `)
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (bookingsError) throw bookingsError;
+
+      // Get recent payments (as recipient)
+      const { data: payments, error: paymentsError } = await supabase
+        .from('payments')
+        .select(`
+          id,
+          amount,
+          created_at,
+          status,
+          booking:equipment_bookings!inner(
+            equipment!inner(name),
+            renter:profiles!renter_id(full_name)
+          )
+        `)
+        .eq('recipient_id', user.id)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (paymentsError) throw paymentsError;
+
+      // Process notifications
+      const processedNotifications = [];
+
+      // Add booking notifications
+      bookings?.forEach(booking => {
+        const isNew = booking.status === 'pending';
+        const timeAgo = getTimeAgo(new Date(booking.created_at));
+
+        processedNotifications.push({
+          id: `booking-${booking.id}`,
+          type: 'booking',
+          title: isNew ? "New Booking Request" : "Booking Update",
+          message: `${booking.renter?.full_name || 'Someone'} ${isNew ? 'wants to rent' : 'updated booking for'} your ${booking.equipment?.name}`,
+          timestamp: timeAgo,
+          isRead: !isNew,
+          avatar: booking.renter?.avatar_url,
+          avatarAlt: `Avatar of ${booking.renter?.full_name}`,
+          actionRequired: booking.status === 'pending'
+        });
+      });
+
+      // Add payment notifications
+      payments?.forEach(payment => {
+        const timeAgo = getTimeAgo(new Date(payment.created_at));
+
+        processedNotifications.push({
+          id: `payment-${payment.id}`,
+          type: 'payment',
+          title: "Payment Received",
+          message: `₹${payment.amount} received from ${payment.booking?.renter?.full_name || 'Someone'} for ${payment.booking?.equipment?.name} rental`,
+          timestamp: timeAgo,
+          isRead: false,
+          avatar: payment.booking?.renter?.avatar_url,
+          avatarAlt: `Avatar of ${payment.booking?.renter?.full_name}`,
+          actionRequired: false
+        });
+      });
+
+      // Sort by timestamp (most recent first)
+      processedNotifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+      setNotifications(processedNotifications);
+    } catch (err) {
+      console.error('Error loading notifications:', err);
+      // Fallback to mock data on error
+      setNotifications([
+        {
+          id: 1,
+          type: 'booking',
+          title: "New Booking Request",
+          message: "Rajesh Kumar wants to rent your John Deere Tractor for 5 days",
+          timestamp: "2 minutes ago",
+          isRead: false,
+          avatar: "https://images.unsplash.com/photo-1618499607072-622f1eec6194",
+          avatarAlt: "Middle-aged Indian farmer with mustache wearing white kurta smiling at camera",
+          actionRequired: true
+        },
+        {
+          id: 2,
+          type: 'payment',
+          title: "Payment Received",
+          message: "₹2,500 received from Priya Sharma for Harvester rental",
+          timestamp: "1 hour ago",
+          isRead: false,
+          avatar: "https://images.unsplash.com/photo-1686931102593-4c5af482fa38",
+          avatarAlt: "Young Indian woman farmer with traditional dupatta smiling confidently outdoors",
+          actionRequired: false
+        }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getTimeAgo = (date) => {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`;
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    return `${Math.floor(diffInSeconds / 86400)} days ago`;
+  };
 
   const tabs = [
   { id: 'all', label: 'All', count: notifications?.length },

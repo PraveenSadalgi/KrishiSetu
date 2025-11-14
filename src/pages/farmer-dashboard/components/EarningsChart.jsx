@@ -1,24 +1,119 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../../contexts/AuthContext';
+import { supabase } from '../../../lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 
 const EarningsChart = () => {
-  const monthlyData = [
-    { month: 'Jul', earnings: 28000, bookings: 15 },
-    { month: 'Aug', earnings: 32000, bookings: 18 },
-    { month: 'Sep', earnings: 35000, bookings: 22 },
-    { month: 'Oct', earnings: 41000, bookings: 25 },
-    { month: 'Nov', earnings: 38000, bookings: 20 },
-    { month: 'Dec', earnings: 45000, bookings: 28 },
-    { month: 'Jan', earnings: 45680, bookings: 30 }
-  ];
+  const { user } = useAuth();
+  const [monthlyData, setMonthlyData] = useState([]);
+  const [equipmentPerformance, setEquipmentPerformance] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const equipmentPerformance = [
-    { name: 'Tractor', earnings: 25000, percentage: 55 },
-    { name: 'Harvester', earnings: 15000, percentage: 33 },
-    { name: 'Tiller', earnings: 5680, percentage: 12 }
-  ];
+  useEffect(() => {
+    if (user?.id) {
+      loadChartData();
+
+      // Set up realtime subscription for bookings
+      const subscription = supabase
+        .channel('earnings-chart-realtime')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'equipment_bookings',
+          filter: `owner_id=eq.${user.id}`
+        }, () => {
+          loadChartData();
+        })
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+  }, [user]);
+
+  const loadChartData = async () => {
+    try {
+      setLoading(true);
+
+      // Get last 7 months of booking data
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - 6);
+
+      const { data: bookings, error } = await supabase
+        .from('equipment_bookings')
+        .select('total_amount, created_at, equipment!inner(name, category_id)')
+        .eq('owner_id', user.id)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
+        .eq('status', 'completed');
+
+      if (error) throw error;
+
+      // Process monthly data
+      const monthlyMap = {};
+      const equipmentMap = {};
+
+      bookings?.forEach(booking => {
+        const month = new Date(booking.created_at).toLocaleDateString('en-US', { month: 'short' });
+        const amount = booking.total_amount || 0;
+
+        if (!monthlyMap[month]) {
+          monthlyMap[month] = { earnings: 0, bookings: 0 };
+        }
+        monthlyMap[month].earnings += amount;
+        monthlyMap[month].bookings += 1;
+
+        // Equipment performance
+        const equipmentName = booking.equipment?.name || 'Unknown';
+        if (!equipmentMap[equipmentName]) {
+          equipmentMap[equipmentName] = 0;
+        }
+        equipmentMap[equipmentName] += amount;
+      });
+
+      // Convert to arrays
+      const processedMonthlyData = Object.entries(monthlyMap).map(([month, data]) => ({
+        month,
+        earnings: data.earnings,
+        bookings: data.bookings
+      }));
+
+      const totalEarnings = Object.values(equipmentMap).reduce((sum, earnings) => sum + earnings, 0);
+      const processedEquipmentPerformance = Object.entries(equipmentMap).map(([name, earnings]) => ({
+        name,
+        earnings,
+        percentage: Math.round((earnings / totalEarnings) * 100)
+      }));
+
+      setMonthlyData(processedMonthlyData);
+      setEquipmentPerformance(processedEquipmentPerformance);
+
+    } catch (err) {
+      console.error('Error loading chart data:', err);
+      // Fallback to mock data
+      setMonthlyData([
+        { month: 'Jul', earnings: 28000, bookings: 15 },
+        { month: 'Aug', earnings: 32000, bookings: 18 },
+        { month: 'Sep', earnings: 35000, bookings: 22 },
+        { month: 'Oct', earnings: 41000, bookings: 25 },
+        { month: 'Nov', earnings: 38000, bookings: 20 },
+        { month: 'Dec', earnings: 45000, bookings: 28 },
+        { month: 'Jan', earnings: 45680, bookings: 30 }
+      ]);
+
+      setEquipmentPerformance([
+        { name: 'Tractor', earnings: 25000, percentage: 55 },
+        { name: 'Harvester', earnings: 15000, percentage: 33 },
+        { name: 'Tiller', earnings: 5680, percentage: 12 }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload?.length) {

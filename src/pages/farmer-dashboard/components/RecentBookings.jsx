@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { profileService } from '../../../services/profileService';
+import { supabase } from '../../../lib/supabase';
 import Icon from '../../../components/AppIcon';
 import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
@@ -14,6 +15,33 @@ const RecentBookings = () => {
   useEffect(() => {
     if (user?.id) {
       loadBookings();
+
+      // Set up realtime subscription for bookings
+      const subscription = supabase
+        .channel('recent-bookings-realtime')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'equipment_bookings',
+          filter: `owner_id=eq.${user.id}`
+        }, (payload) => {
+          console.log('Booking change detected:', payload);
+          loadBookings(); // Reload bookings on any change
+        })
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'equipment_bookings',
+          filter: `renter_id=eq.${user.id}`
+        }, (payload) => {
+          console.log('Booking change detected (as renter):', payload);
+          loadBookings(); // Reload bookings on any change
+        })
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
     }
   }, [user]);
 
